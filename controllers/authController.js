@@ -29,7 +29,7 @@ exports.verifyEmail = async (req, res) => {
 
   try {
     const user = await User.findOne({ pendriveId });
-
+    // console.log("User found for email verification:", pendriveId);
     if (!user || user.email !== email) {
       return res.status(401).json({ message: "Email not authorized" });
     }
@@ -59,6 +59,14 @@ exports.verifyOtp = async (req, res) => {
   const { pendriveId, otp } = req.body;
 
   try {
+
+
+    const user = await User.findOne({ pendriveId });
+    if (!user) {
+      return res.status(404).json({ message: "Pendrive not registered" });
+    }  
+
+
     const record = await Otp.findOne({ pendriveId, otp });
 
     if (!record) {
@@ -69,6 +77,11 @@ exports.verifyOtp = async (req, res) => {
       await Otp.deleteMany({ pendriveId });
       return res.status(401).json({ message: "OTP expired" });
     }
+
+
+     user.isOtpVerified = true;
+    await user.save();
+
 
     // OTP is valid → clear it
     await Otp.deleteMany({ pendriveId });
@@ -81,3 +94,45 @@ exports.verifyOtp = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+
+
+exports.getPendriveStatus = async (req, res) => {
+  const { pendriveId } = req.params;
+
+  const user = await User.findOne({ pendriveId });
+
+  if (!user) {
+    return res.json({ status: "NOT_REGISTERED" });
+  }
+  // console.log("Pendrive found:", pendriveId, "OTP Verified:", user.isOtpVerified);
+  if (user.isOtpVerified) {
+    console.log("Pendrive authorized:", pendriveId);
+    return res.json({ status: "AUTHORIZED" });
+  }
+  // console.log("Pendrive pending OTP verification:", pendriveId);
+
+  return res.json({ status: "PENDING" });
+};
+
+
+
+// POST /api/pendrive/revoke
+exports.revokePendrive = async (req, res) => {
+  const { pendriveId } = req.body;
+
+  await User.findOneAndUpdate(
+    { pendriveId },
+    { isOtpVerified: false }
+  );
+
+  console.log("Authorization revoked:", pendriveId);
+  res.json({ revoked: true });
+};
+
+
+
+
+
+
