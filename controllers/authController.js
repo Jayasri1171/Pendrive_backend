@@ -26,7 +26,7 @@ const sendOtp = require("../utils/sendOtp");
 
 exports.verifyEmail = async (req, res) => {
   const { pendriveId, email } = req.body;
-
+  console.log("Sending email to:", email);
   try {
     const user = await User.findOne({ pendriveId });
     // console.log("User found for email verification:", pendriveId);
