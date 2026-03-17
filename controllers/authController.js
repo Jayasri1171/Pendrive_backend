@@ -48,7 +48,7 @@ exports.verifyEmail = async (req, res) => {
 
     res.json({ message: "OTP sent to registered email" });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" ,error: error.message});
   }
 };
 
