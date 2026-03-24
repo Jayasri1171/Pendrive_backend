@@ -5,7 +5,8 @@ const {
   verifyEmail,
   verifyOtp,
   getPendriveStatus,
-  revokePendrive
+  revokePendrive,
+  createSession
 } = require("../controllers/authController");
 
 router.post("/verify-otp", verifyOtp);
@@ -19,6 +20,8 @@ router.post("/register", registerPendrive);
 router.get("/status/:pendriveId", getPendriveStatus);
 
 router.post("/revoke", revokePendrive)
+
+router.post("/session", createSession);
 
 
 

@@ -1,5 +1,33 @@
 const User = require("../models/User");
 
+
+const { v4: uuidv4 } = require("uuid");
+
+const sessions = {}; // token -> pendriveId
+
+
+
+
+exports.createSession = (req, res) => {
+  const { pendriveId } = req.body;
+  
+  if (!pendriveId) {
+    return res.status(400).json({ message: "pendriveId required" });
+  }
+
+  const token = uuidv4();
+
+  sessions[token] = {
+    pendriveId,
+    createdAt: Date.now()
+  };
+
+  res.json({ token });
+};
+
+
+
+
 // Register pendrive + email
 exports.registerPendrive = async (req, res) => {
   const { pendriveId, email } = req.body;
@@ -25,7 +53,20 @@ const Otp = require("../models/Otp");
 const sendOtp = require("../utils/sendOtp");
 
 exports.verifyEmail = async (req, res) => {
-  const { pendriveId, email } = req.body;
+  const { token, email } = req.body;
+  if (!token || !sessions[token]) {
+  return res.status(400).json({ message: "Invalid session" });
+}
+
+const session = sessions[token];
+
+if (!session) {
+  return res.status(400).json({ message: "Invalid session" });
+}
+
+const pendriveId = session.pendriveId;
+
+
   console.log("Sending email to:", email);
   try {
     const user = await User.findOne({ pendriveId });
@@ -46,7 +87,7 @@ exports.verifyEmail = async (req, res) => {
 
     await sendOtp(email, otp);
 
-    res.json({ message: "OTP sent to registered email" });
+    res.json({ success: true, message: "OTP sent" });
   } catch (error) {
     res.status(500).json({ message: "Server error" ,error: error.message});
   }
@@ -56,7 +97,17 @@ exports.verifyEmail = async (req, res) => {
 
 
 exports.verifyOtp = async (req, res) => {
-  const { pendriveId, otp } = req.body;
+  const { token, otp } = req.body;
+  if (!token || !sessions[token]) {
+  return res.status(400).json({ message: "Invalid session" });
+}
+
+const session = sessions[token];
+if (!session) {
+  return res.status(400).json({ message: "Invalid session" });
+}
+
+const pendriveId = session.pendriveId;
 
   try {
 
@@ -85,17 +136,26 @@ exports.verifyOtp = async (req, res) => {
 
     // OTP is valid → clear it
     await Otp.deleteMany({ pendriveId });
-
+    delete sessions[token];
     res.json({
       accessGranted: true,
       message: "OTP verified, access granted"
     });
+
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
 };
 
+setInterval(() => {
+  const now = Date.now();
 
+  for (let token in sessions) {
+    if (now - sessions[token].createdAt > 5 * 60 * 1000) {
+      delete sessions[token];
+    }
+  }
+}, 60 * 1000);
 
 
 exports.getPendriveStatus = async (req, res) => {
